@@ -1,30 +1,56 @@
 import java.util.*;
 
 class Main {
-  static List<Long> durations = new ArrayList<Long>();
-  static List<Thread> threads = new ArrayList<Thread>();
 
   public static void main(String[] args) {
-    for (int i = 0; i < 20; i++) {
-      Thread t = new Thread(new SingletonPrinter());
-      threads.add(t);
-      t.start();
-    }
-    for (int i = 0; i < 40; i++) {
-      Thread t = new Thread(new SingletonPrinter());
-      threads.add(t);
-      t.start();
-      Singleton.sleep(1);
-    }
+    
+    new ThreadExecutor(LockType.SINGLE_CHECKED).run(); 
+    new ThreadExecutor(LockType.DOUBLE_CHECKED).run();
+  }
+}
 
+enum LockType {
+    DOUBLE_CHECKED, SINGLE_CHECKED
+}
+
+class ThreadExecutor {
+  List<Long> durations = new ArrayList<Long>();
+  List<Thread> threads = new ArrayList<Thread>();
+
+  LockType type;
+
+  public ThreadExecutor(LockType t) {
+    type = t;
+  }
+
+  public void run() {
+    executeThreads();
     printStats();
   }
 
-  public static void addTime(long duration) {
+  public void executeThreads() {
+    initiateAndRunThreads(20, 0);
+    initiateAndRunThreads(80, 1);
+  }
+
+  public void initiateAndRunThreads(int count, int delay) {
+    for (int i = 0; i < count; i++) {
+      Thread t = null;
+      if (type == LockType.DOUBLE_CHECKED)
+        t = new Thread(new DoubleCheckedSingletonPrinter(this));
+      else
+        t = new Thread(new SingleCheckedSingletonPrinter(this));
+      threads.add(t);
+      t.start();
+      Util.sleep(delay);
+    }
+  }
+
+  public synchronized void addTime(long duration) {
     durations.add(duration);
   }
 
-  public static void printStats() {
+  public void printStats() {
     Iterator<Thread> threadIterator = threads.iterator();
     long sum = 0;
     while (threadIterator.hasNext())
@@ -37,30 +63,47 @@ class Main {
     Iterator<Long> durationIterator = durations.iterator();
     while (durationIterator.hasNext())
       sum += ((Long) durationIterator.next()).longValue();
-    System.out.println(" Average: " + sum / durations.size());
+    System.out.println("Type: "+type+" Avg getInstance time: " + sum / durations.size());
   }
 }
 
-class Singleton {
+class DoubleCheckedSingleton {
   private static volatile String bigSlowString = null;
 
   public static String getInstance() {
-    // if (bigSlowString == null)
-    //synchronized (Singleton.class) {
-      if (bigSlowString == null) {
-        String temp;
-        temp = buildString();
-        bigSlowString = temp;
+    if (bigSlowString == null)
+      synchronized (DoubleCheckedSingleton.class) {
+        if (bigSlowString == null) {
+          String temp;
+          temp = Util.buildString();
+          bigSlowString = temp;
+        }
       }
-    //}
     return bigSlowString;
   }
+}
 
-  private static String buildString() {
+class SingleCheckedSingleton {
+  private static volatile String bigSlowString = null;
+  
+  public static String getInstance() {
+    synchronized (SingleCheckedSingleton.class) {
+      if (bigSlowString == null) {
+        String temp;
+        temp = Util.buildString();
+        bigSlowString = temp;
+      }
+    }
+    return bigSlowString;
+  }
+}
+  
+class Util {
+  public static String buildString() {
     System.out.println("building string...");
     String temp = "start...";
     for (int i = 0; i < 10; i++) {
-      sleep(10);
+      sleep(2);
       temp += i;
     }
     return temp;
@@ -75,12 +118,44 @@ class Singleton {
   }
 }
 
-class SingletonPrinter implements Runnable {
+abstract class SingletonPrinter implements Runnable {
+
+  ThreadExecutor executor;
+
+  public SingletonPrinter(ThreadExecutor e) {
+    executor = e;
+  }
+
   public void run() {
     long start = System.currentTimeMillis();
-    String result = Singleton.getInstance();
+    call();
     long end = System.currentTimeMillis();
-    System.out.println(result + " - ran for: " + (end - start));
-    Main.addTime(end - start);
+    // System.out.println(result + " - ran for: " + (end - start));
+    executor.addTime(end - start);
+  }
+
+  public void call() {
+  }
+}
+
+class DoubleCheckedSingletonPrinter extends SingletonPrinter {
+
+  public DoubleCheckedSingletonPrinter(ThreadExecutor e) {
+    super(e);
+  }
+
+  public void call() {
+    DoubleCheckedSingleton.getInstance();
+  }
+}
+
+class SingleCheckedSingletonPrinter extends SingletonPrinter {
+
+  public SingleCheckedSingletonPrinter(ThreadExecutor e) {
+    super(e);
+  }
+
+  public void call() {
+    SingleCheckedSingleton.getInstance();
   }
 }
