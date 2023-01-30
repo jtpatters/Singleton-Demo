@@ -9,12 +9,9 @@ class SingletonCaller implements Runnable {
   }
 
   public void run() {
-    long start = System.currentTimeMillis();
-    String x = "";
-      for(int i=0;i<100;i++)
-        x += checkedSingleton.getInstance();
-           
-    long end = System.currentTimeMillis();
+    long start = System.nanoTime();
+    checkedSingleton.getInstance();  
+    long end = System.nanoTime();
     //System.out.println("-ran for: " + (end - start));
     executor.addTime(end - start);
   }

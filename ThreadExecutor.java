@@ -16,24 +16,20 @@ class ThreadExecutor {
   }
 
   public void run() {
-    executeThreads();
+    initiateAndRunThreads(10000, 0);
     printStats();
-  }
-
-  public void executeThreads() {
-    initiateAndRunThreads(200, 0);
-   // Util.sleep(2000);
-   // initiateAndRunThreads(20, 0);
   }
 
   public void initiateAndRunThreads(int count, int delay) {
     for (int i = 0; i < count; i++) { 
-      Thread t = new Thread(new SingletonCaller(this,checkedSingleton));
+      Thread t = new Thread(new SingletonCaller(this, checkedSingleton));
       threads.add(t);
     }
     Iterator<Thread> threadIterator = threads.iterator();
-    while (threadIterator.hasNext())
+    while (threadIterator.hasNext()){
       ((Thread) threadIterator.next()).start();
+      Util.sleep(delay);
+    }
   }
 
   public synchronized void addTime(long duration) {
@@ -58,7 +54,6 @@ class ThreadExecutor {
       if (value > max)
         max = value;
     }
-    System.out.println("Type: " + type + " Avg: " + sum / durations.size() + " Max: " + max
-        + " Calls: " + durations.size());
+    System.out.println("Type: " + type + " \tAvg: " + sum / durations.size() + " \tMax: " + max);
   }
 }

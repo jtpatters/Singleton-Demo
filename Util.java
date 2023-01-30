@@ -3,7 +3,7 @@ class Util {
     //System.out.println("building string...");
     String temp = "start...";
     for (int i = 0; i < 10; i++) {
-      sleep(10);
+      sleep(2);
       temp += i;
     }
     return temp;
